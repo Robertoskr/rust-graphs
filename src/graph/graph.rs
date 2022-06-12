@@ -3,7 +3,7 @@
 mod utils;
 
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::{BinaryHeap, HashSet, VecDeque};
 use utils::*;
 
 #[derive(Clone, Debug)]
@@ -158,6 +158,38 @@ impl Graph {
             }
         }
 
+        distances
+    }
+
+    //bfs algorithm
+    //returns the distance from start node to all nodes
+    //distance is measured on n of edges between two vertices
+    pub fn bfs(
+        &self,
+        start: usize,
+        previsit: impl Fn(usize),
+        postvisit: impl Fn(usize),
+    ) -> Vec<i64> {
+        let mut distances = vec![i64::MAX; self.edges.len()];
+        let mut queue: VecDeque<usize> = VecDeque::new();
+        let mut visited: Vec<bool> = vec![false; self.edges.len()];
+        queue.push_front(start);
+        distances[start] = 0;
+        while !queue.is_empty() {
+            if visited[*queue.back().unwrap()] {
+                postvisit(queue.pop_back().unwrap());
+                continue;
+            }
+            let actual = queue.back().unwrap();
+            visited[*actual] = true;
+            previsit(*actual);
+            for edge in &self.edges[*actual] {
+                if !visited[edge.to] {
+                    distances[edge.to] = distances[edge.from] + 1;
+                    queue.push_front(edge.to);
+                }
+            }
+        }
         distances
     }
 }
