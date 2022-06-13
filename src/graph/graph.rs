@@ -7,6 +7,18 @@ use std::collections::{BinaryHeap, HashSet, VecDeque};
 use utils::*;
 
 #[derive(Clone, Debug)]
+pub struct Point {
+    x: i64,
+    y: i64,
+}
+
+impl Point {
+    fn new(x: i64, y: i64) -> Self {
+        Self { x, y }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Node {
     from: usize,
     to: usize,
@@ -21,16 +33,29 @@ impl Node {
 
 pub struct Graph {
     pub edges: Vec<Vec<Node>>,
+    pub points: Vec<Point>,
 }
 
 impl Graph {
     pub fn new() -> Self {
-        Self { edges: Vec::new() }
+        Self {
+            edges: Vec::new(),
+            points: Vec::new(),
+        }
     }
 
     pub fn with_capacity(cap: &usize) -> Self {
         Self {
             edges: vec![Vec::new(); *cap],
+            points: Vec::with_capacity(*cap),
+        }
+    }
+    //sets the given points in to the graph
+    pub fn set_points(&mut self, mut points: Vec<(usize, Point)>) {
+        points.sort_by(|x, y| x.0.cmp(&y.0));
+        for (i, point) in points.iter().enumerate() {
+            assert_eq!(i, point.0);
+            self.points.push(point.1.clone());
         }
     }
 
@@ -144,16 +169,16 @@ impl Graph {
     //use bellman ford algorithm for that, and detect the negative cycles.
     pub fn dijsktra(&self, start: usize) -> Vec<i64> {
         let mut distances = vec![i64::MAX; self.edges.len()];
-        let mut heap = BinaryHeap::new();
-        heap.push(Reverse(start));
+        let mut heap: BinaryHeap<(Reverse<i64>, usize)> = BinaryHeap::new();
+        heap.push((Reverse(0), start));
 
         while !heap.is_empty() {
-            let actual = heap.pop().unwrap().0;
+            let actual = heap.pop().unwrap().1;
             for edge in &self.edges[actual] {
                 let dist = distances[edge.from] + edge.weight;
                 if dist < distances[edge.to] {
                     distances[edge.to] = dist;
-                    heap.push(Reverse(edge.to));
+                    heap.push((Reverse(distances[edge.to]), edge.to));
                 }
             }
         }
@@ -191,5 +216,36 @@ impl Graph {
             }
         }
         distances
+    }
+
+    fn a_search_heuristic(&self, a: &Point, b: &Point) -> i64 {
+        i64::abs(a.x - b.x) + i64::abs(a.y - b.y)
+    }
+
+    pub fn a_search(&self, start: usize, target: usize) -> i64 {
+        let mut distances: Vec<i64> = vec![i64::MAX; self.edges.len()];
+        let mut parents: Vec<i64> = vec![-1; self.edges.len()];
+        let mut heap: BinaryHeap<(Reverse<i64>, usize)> = BinaryHeap::new();
+        distances[start] = 0;
+        heap.push((Reverse(0), start));
+
+        while !heap.is_empty() {
+            let actual = heap.pop().unwrap().1;
+            if actual == target {
+                break;
+            }
+            for edge in &self.edges[actual] {
+                let dist = distances[actual] + edge.weight;
+                if parents[edge.to] == -1 || distances[edge.to] > dist {
+                    parents[edge.to] = actual as i64;
+                    distances[edge.to] = dist;
+                    //heuristic of a*search
+                    let priority =
+                        self.a_search_heuristic(&self.points[edge.to], &self.points[target]);
+                    heap.push((Reverse(priority as i64), edge.to));
+                }
+            }
+        }
+        distances[target]
     }
 }
