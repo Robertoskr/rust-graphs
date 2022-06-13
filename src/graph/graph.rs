@@ -248,4 +248,8 @@ impl Graph {
         }
         distances[target]
     }
+
+    //TODO: add network flow algorithms
+    //TODO: add connected components algorithms
+    //TODO: add spanning tree algorithms
 }
