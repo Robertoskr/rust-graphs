@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
+mod union_find;
 mod utils;
 
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashSet, VecDeque};
+use union_find::*;
 use utils::*;
 
 #[derive(Clone, Debug)]
@@ -34,6 +36,7 @@ impl Node {
 pub struct Graph {
     pub edges: Vec<Vec<Node>>,
     pub points: Vec<Point>,
+    total_edges: usize,
 }
 
 impl Graph {
@@ -41,6 +44,7 @@ impl Graph {
         Self {
             edges: Vec::new(),
             points: Vec::new(),
+            total_edges: 0,
         }
     }
 
@@ -48,6 +52,7 @@ impl Graph {
         Self {
             edges: vec![Vec::new(); *cap],
             points: Vec::with_capacity(*cap),
+            total_edges: 0,
         }
     }
     //sets the given points in to the graph
@@ -76,6 +81,11 @@ impl Graph {
     //TODO: support creating a graph from a file
     fn from_file(filename: String) -> Self {
         Self::new()
+    }
+
+    //return the total of edges in the graph
+    pub fn total_edges(&self) -> usize {
+        self.total_edges
     }
 
     pub fn add_weighted_edge(&mut self, from: usize, to: usize, weight: i64) -> () {
@@ -249,7 +259,31 @@ impl Graph {
         distances[target]
     }
 
+    //compute the minimum spanning tree using prim's algorithm
+    pub fn minimum_spanning_tree(&self) -> Vec<Node> {
+        let mut edges: Vec<Node> = Vec::with_capacity(self.total_edges());
+        let mut union_find = UnionFind::new(self.edges.len());
+        let mut result_edges: Vec<Node> = Vec::with_capacity(self.edges.len() - 1);
+        //create all the edges
+        for _edges in &self.edges {
+            for _edge in _edges {
+                edges.push(_edge.clone());
+            }
+        }
+        //sort the edges
+        edges.sort_by(|a, b| a.weight.cmp(&b.weight));
+        //start picking edges
+        let mut i = 0;
+        while result_edges.len() < self.edges.len() {
+            let actual_edge = edges[i].clone();
+            if !union_find.are_adjacent(actual_edge.from, actual_edge.to) {
+                union_find.merge(actual_edge.from, actual_edge.to);
+                result_edges.push(actual_edge);
+            }
+        }
+        result_edges
+    }
+
     //TODO: add network flow algorithms
     //TODO: add connected components algorithms
-    //TODO: add spanning tree algorithms
 }
