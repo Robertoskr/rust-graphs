@@ -284,6 +284,62 @@ impl Graph {
         result_edges
     }
 
+    //perform the topological sort of a graph
+    fn topological_sort(&self) -> Vec<usize> {
+        let mut result: Vec<usize> = Vec::new();
+        //perform dfs and keep adding nodes to the dfs
+        let mut stack: Vec<usize> = Vec::new();
+        let mut visited: Vec<bool> = vec![false; self.edges.len()];
+        let mut topological_sort: Vec<usize> = Vec::with_capacity(self.edges.len());
+
+        //perform dijstra algorithm, for computing the topological sort
+        for i in 0..self.edges.len() {
+            stack.push(i);
+            while !stack.is_empty() {
+                let actual = stack[self.edges.len() - 1];
+                if visited[actual] {
+                    stack.pop();
+                    topological_sort.push(actual);
+                }
+                visited[actual] = true;
+                for edge in &self.edges[actual] {
+                    if !visited[edge.to] {
+                        stack.push(edge.to);
+                    }
+                }
+            }
+        }
+        //reverse the order of the vector for being the correct
+        topological_sort.reverse();
+        topological_sort
+    }
+
     //TODO: add network flow algorithms
     //TODO: add connected components algorithms
+    fn number_of_components(&self) -> usize {
+        let mut visited: Vec<bool> = vec![false; self.edges.len()];
+        let mut stack: Vec<usize> = Vec::new();
+        let mut result: usize = 0;
+        //perform dijstra algorithm, for computing the topological sort
+        for i in 0..self.edges.len() {
+            if !visited[i] {
+                stack.push(i);
+            } else {
+                result += 1;
+            }
+            while !stack.is_empty() {
+                let actual = stack[self.edges.len() - 1];
+                if visited[actual] {
+                    stack.pop();
+                }
+                visited[actual] = true;
+                for edge in &self.edges[actual] {
+                    if !visited[edge.to] {
+                        stack.push(edge.to);
+                    }
+                }
+            }
+        }
+        result
+    }
 }
