@@ -6,6 +6,7 @@ mod utils;
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashSet, VecDeque};
 use union_find::*;
+#[allow(unused_imports)]
 use utils::*;
 
 #[derive(Clone, Debug)]
@@ -24,6 +25,8 @@ impl Point {
 pub struct Node {
     from: usize,
     to: usize,
+    //weight can be interpreted as the length in some algorithms,
+    //also can be interpreted as the capacity (flow) of the edge in other algorithms
     weight: i64,
 }
 
@@ -46,6 +49,20 @@ impl Graph {
             points: Vec::new(),
             total_edges: 0,
         }
+    }
+
+    //convert the graph from adjacency list to adjacency matrix, and return a copy of it
+    pub fn to_adjacency_matrix(&self) -> Vec<Vec<Option<Node>>> {
+        let mut matrix: Vec<Vec<Option<Node>>> =
+            vec![vec![None; self.edges.len()]; self.edges.len()];
+
+        for i in 0..self.edges.len() {
+            for edge in &self.edges[i] {
+                matrix[edge.from][edge.to] = Some(edge.clone());
+            }
+        }
+
+        matrix
     }
 
     pub fn with_capacity(cap: &usize) -> Self {
@@ -314,7 +331,6 @@ impl Graph {
         topological_sort
     }
 
-    //TODO: add network flow algorithms
     //TODO: add connected components algorithms
     fn number_of_components(&self) -> usize {
         let mut visited: Vec<bool> = vec![false; self.edges.len()];
@@ -341,5 +357,68 @@ impl Graph {
             }
         }
         result
+    }
+
+    //helper function for the ford fulkerson algorithm,
+    //perform the bfs until it get's to the sink
+    //and return true if we end in the sink
+    fn bfs_ford_fulkerson(
+        source: usize,
+        sink: usize,
+        parents: &mut Vec<i64>,
+        graph: &Vec<Vec<Option<Node>>>,
+    ) -> bool {
+        let mut visited = vec![false; graph.len()];
+        let mut queue: VecDeque<usize> = VecDeque::new();
+        queue.push_back(source);
+        visited[source] = true;
+
+        while !queue.is_empty() {
+            let actual = queue.pop_front().unwrap();
+            for maybe_node in &graph[actual] {
+                if let Some(node) = maybe_node {
+                    if node.weight > 0 && !visited[node.to] {
+                        visited[node.to] = true;
+                        parents[node.to] = node.from as i64;
+                        queue.push_back(node.to);
+                        if node.to == sink {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    //compute the max flow of the graph and return it
+    fn ford_fulkerson(&self, start: usize, sink: usize) -> usize {
+        //convert to a matrix
+        let mut as_matrix = self.to_adjacency_matrix();
+        let mut parents: Vec<i64> = vec![-1; as_matrix.len()];
+        let mut max_flow: usize = 0;
+        while Self::bfs_ford_fulkerson(start, sink, &mut parents, &as_matrix) {
+            let mut path_flow = usize::MAX;
+            let mut s = sink;
+            while s != start {
+                let flow = as_matrix[parents[s] as usize][s].clone().unwrap().weight as usize;
+                path_flow = usize::min(path_flow, flow);
+                s = parents[s] as usize;
+            }
+            max_flow += path_flow;
+
+            //update the residual capacities
+            let mut v = sink;
+
+            //so fucking uglyyyyyy
+            while v != start {
+                let u = parents[v] as usize;
+                let path_flow = path_flow as i64;
+                as_matrix[u][v].as_mut().unwrap().weight -= path_flow;
+                as_matrix[v][u].as_mut().unwrap().weight += path_flow;
+                v = parents[v] as usize;
+            }
+        }
+        max_flow
     }
 }
